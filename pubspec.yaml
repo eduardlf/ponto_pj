@@ -1,5 +1,5 @@
 name: ponto_pj
-description: "A new Flutter project."
+description: "Ponto PJ — registro de ponto que preenche a planilha da empresa e a envia por e-mail."
 publish_to: 'none'
 version: 0.1.0
 
@@ -9,11 +9,35 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # Versões resolvidas na F-0 (T-001) e fixadas nas linhas de docs/09, seção 9.3.
+  # drift e drift_dev precisam andar juntos na mesma versão menor, e drift_flutter a partir
+  # da 0.2.5 usa APIs de drift mais novas que a 2.23 (o build quebra com isolateDebugLog).
+  archive: ^3.6.1
+  collection: ^1.18.0
+  crypto: ^3.0.8
+  drift: ">=2.23.1 <2.24.0"
+  drift_flutter: ">=0.2.4 <0.2.5"
+  file_picker: ^8.3.7
+  flutter_email_sender: ^6.0.3
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  intl: 0.19.0
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  share_plus: ^10.1.4
+  sqlite3_flutter_libs: ^0.5.42
+  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.4.13
+  drift_dev: ">=2.23.1 <2.24.0"
   flutter_lints: ^4.0.0
+  # Só para os testes de repositório: aponta o SQLite do sistema no `flutter test`.
+  sqlite3: ^2.9.4
 
 flutter:
   uses-material-design: true

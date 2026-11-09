@@ -189,3 +189,28 @@ situação verdadeira.
 uma escala SUS ao final.
 
 **Critério de aprovação.** Todos os participantes concluem T2 sem ajuda; SUS médio ≥ 72.
+
+## 3.7 Acessibilidade cognitiva: TDAH
+
+Na atividade de curricularização da extensão de IHM e Análise, este projeto atende uma pessoa com
+deficiência, e o TDAH foi aceito como recorte. O problema de [01](01-visao-e-escopo.md) pesa mais
+para quem tem TDAH, porque as três dores atingem justamente as funções que o transtorno mais
+costuma afetar:
+
+| Dificuldade frequente no TDAH | Onde ela aparece no fluxo antigo | Como o app responde |
+|-------------------------------|----------------------------------|---------------------|
+| **Lembrar de fazer algo no futuro** (memória prospectiva) | Esquecer o envio no fechamento (D1) | Cartão "O ponto de outubro ainda não foi enviado" na aba Dia, que aparece sem depender de notificação; lembrete de fechamento na F-7 |
+| **Adiar tarefas longas e monótonas** | Transcrever ~31 dias à mão (D2) | A transcrição deixa de existir: um toque gera a planilha |
+| **Erros por desatenção em tarefa repetitiva** | Digitar um horário na linha errada (D3) | O dado nunca é redigitado; a lista de pendências mostra o que falta antes de gerar |
+| **Custo de começar e de trocar de contexto** | Abrir o computador, o app e a planilha lado a lado | O fluxo inteiro cabe no celular, do registro ao e-mail com anexo |
+| **Configuração longa que é abandonada no meio** | — | O wizard sugere o mapeamento sozinho; cada etapa do onboarding pode ser pulada e vira um cartão de pendência |
+| **Medo de errar sem volta** | — | "Desfazer" depois de cada marcação, confirmação antes de excluir, prévia da planilha antes de salvar |
+| **Perder a noção do tempo no expediente** | — | Previsão de saída e saldo do dia atualizados ao vivo |
+
+Os princípios de [04, seção 4.1](04-ux-navegacao-telas.md) — o dia a dia em dois toques, a
+complexidade concentrada numa configuração feita uma vez, nada perdido em silêncio — já apontavam
+nessa direção. Esta seção torna o recorte explícito.
+
+> ⚠️ EM ABERTO — o teste de usabilidade de 3.6 deve incluir ao menos um participante com TDAH, e a
+> escala SUS deve ser lida separadamente para esse grupo. É a evidência que falta para afirmar que o
+> app ajuda esse público, e não apenas que ele foi pensado para isso.

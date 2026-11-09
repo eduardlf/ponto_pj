@@ -152,7 +152,7 @@ As regras marcadas com ★ têm algoritmo detalhado e tabela de casos em
 | ID | Regra |
 |----|-------|
 | RN-07 | Minutos trabalhados no dia = soma da duração de todos os pares completos de marcações. Uma marcação sem par não contribui. |
-| RN-08 | Se, dentro de um par, o horário de saída for menor que o de entrada, considera-se virada de dia e soma-se 24 horas — apenas quando a jornada permitir cruzar a meia-noite; caso contrário o par é inválido e o dia fica inconsistente. |
+| RN-08 | Com a virada de dia permitida, a sequência do dia começa no horário seguinte ao maior intervalo entre marcações consecutivas: assim um turno pode começar à noite e terminar depois da meia-noite, e sua duração é saída + 24 h − entrada. Com a virada desligada (o padrão), os horários são lidos em ordem crescente e nenhum turno cruza a meia-noite. Ver a nota de revisão em [12, seção 12.5](12-regras-de-calculo.md). |
 | RN-09 | Intervalo é a diferença entre a saída de um par e a entrada do par seguinte no mesmo dia. |
 | RN-10 | A carga prevista de um dia vem da configuração do seu dia da semana. É zero nos dias marcados como não trabalhados. |
 | RN-11 | Saldo do dia = minutos trabalhados − carga prevista. |
@@ -174,7 +174,7 @@ As regras marcadas com ★ têm algoritmo detalhado e tabela de casos em
 | RN-22 | A geração nunca altera o arquivo modelo original. Ela sempre produz um novo arquivo. |
 | RN-23 | Um envio só passa ao status ENVIADO por confirmação explícita do usuário, porque o Android não informa ao app se o e-mail foi de fato enviado. |
 | RN-24 | Cada geração de uma competência cria ou atualiza um registro de envio; regerar uma competência já enviada cria um novo registro, preservando o anterior no histórico. |
-| RN-25 | A competência é sempre um par mês/ano completo. Não existem períodos personalizados nesta versão. |
+| RN-25 | A competência é um par mês/ano. Por padrão cobre o mês civil; quando o modelo de planilha define um dia de início diferente de 1, ela vai desse dia no mês anterior até a véspera dele no mês da competência — com início no dia 26, a competência 10/2026 vai de 26/09 a 25/10/2026. Não existem outros períodos personalizados nesta versão. Ver [ADR-12](15-riscos-e-decisoes.md). |
 
 ### Feriados, status e configuração
 

@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sem android.permission.INTERNET, de propósito (ADR-10): o app não acessa a rede, e
+         isso é uma garantia verificável por quem inspecionar o APK. O e-mail sai pelo cliente
+         de e-mail do usuário, com a conta e a conexão dele. -->
     <application
-        android:label="ponto_pj"
+        android:label="Ponto PJ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -25,6 +28,19 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Expõe a pasta das planilhas geradas para abri-las em outro app (docs/11, 11.3).
+             Sem ele, o outro app recebe uma URI que não consegue ler. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -40,6 +56,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+: sem isto o app não enxerga o cliente de e-mail, mesmo com o Gmail
+             instalado (docs/11, seção 11.3). -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
         </intent>
     </queries>
 </manifest>

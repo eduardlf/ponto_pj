@@ -9,9 +9,11 @@ ser atualizado primeiro, de propósito, e não como efeito colateral.
 
 ## Estado atual
 
-Projeto no scaffold inicial: `lib/main.dart` é um Hello World, sem dependências além do Flutter.
-A implementação começa pela fase F-0 de [`docs/13-plano-de-implementacao.md`](docs/13-plano-de-implementacao.md),
-**depois** de executar o spike S-01 descrito lá.
+Primeira entrega pronta: o núcleo funcional, de F-0 a F-6, sem feriados (T-306/T-307) e sem
+fechar/reabrir o dia (T-308). F-7 (notificações, backup) não começou; só o tema existe. O spike
+S-01 foi executado com a planilha real; falta abrir o arquivo gerado no Excel. O quadro tarefa a
+tarefa está em [`docs/13`, seção 13.5](docs/13-plano-de-implementacao.md). Próximo passo: F-7,
+começando pelo lembrete de fechamento (T-704).
 
 ## Comandos
 
@@ -23,6 +25,7 @@ flutter test
 flutter test integration_test/                              # precisa de emulador ou aparelho
 flutter run
 flutter build apk --release
+dart run tool/spike_xlsx.dart <modelo.xlsx> <saida.xlsx>        # S-01: preenche uma planilha real
 ```
 
 Ambiente: Flutter 3.24.4 / Dart 3.5.4. Alvo: Android 8.0 (API 26)+. Windows e Web estão no
@@ -91,7 +94,8 @@ hora ou duração por conta própria.
    fase depende da anterior.
 5. **Não adicionar `android.permission.INTERNET`** ao manifesto
    ([ADR-10](docs/15-riscos-e-decisoes.md)). O app não acessa a rede, e essa é uma garantia
-   verificável, não uma intenção.
+   verificável, não uma intenção. Confira no APK de release com
+   `aapt dump permissions build/app/outputs/flutter-apk/app-release.apk`.
 6. **Não usar o pacote `excel` para escrever** arquivos. Ele serve apenas para **ler** no wizard.
    A escrita é feita por `EscritorXlsxZip`, conforme [`docs/10`, seção 10.5](docs/10-especificacao-planilha.md)
    e [ADR-05](docs/15-riscos-e-decisoes.md).
@@ -114,3 +118,12 @@ hora ou duração por conta própria.
   usar o valor persistido ([12, 12.2](docs/12-regras-de-calculo.md)).
 - **Teste que passa de manhã e falha à noite** → `DateTime.now()` dentro do domínio em vez de
   `agora` injetado.
+- **`flutter build apk` falha com `isolateDebugLog`** → `drift_flutter` acima da 0.2.4 com
+  `drift` 2.23. As duas versões andam juntas; o `pubspec.yaml` explica ([09, 9.3](docs/09-arquitetura-tecnica.md)).
+- **Teste de repositório falha no Windows ao abrir o banco** → falta a DLL do SQLite; use
+  `abrirBancoDeTeste()` de `test/helpers/banco_teste.dart`, que cai para a `winsqlite3.dll`.
+- **Data "pula" um dia ou dá diferença de 23 h** → `DateTime` local onde deveria ser data civil.
+  Datas do domínio são meia-noite UTC: use `dataCivil()`, `apenasData` e `somarDias()` de
+  `core/extensoes/data_extensoes.dart`.
+- **Nova escrita no banco e a tela não atualiza** → faltou incrementar `versaoDadosProvider`
+  depois da escrita; é ele que avisa as outras telas.

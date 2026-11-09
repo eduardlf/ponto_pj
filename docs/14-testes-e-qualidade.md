@@ -34,6 +34,18 @@ flowchart TD
 Nenhum teste unitário ou de widget precisa de emulador. `flutter test` roda tudo em segundos, o que
 é o que faz a suíte ser efetivamente executada durante o desenvolvimento.
 
+**SQLite no Windows.** Fora do app, o `flutter test` não tem a biblioteca do SQLite que o plugin
+empacota. `test/helpers/banco_teste.dart` aponta a `sqlite3.dll` do PATH ou, na falta dela, a
+`winsqlite3.dll` que vem com o Windows 10. Os widget tests também usam esse banco em memória, com
+os repositórios reais: só o relógio, o pulso do relógio vivo e os serviços de arquivo são falsos.
+
+**Inventário da primeira entrega** (212 testes): formatadores e datas do Excel; calculadora com
+todas as tabelas de 12.4 a 12.11; `mes_exemplo` de maio/2026 com os totais fixados; competência
+(inclusive o período de 26 a 25) e referência A1; validadores; resolvedor de variáveis;
+preenchedor nas duas estratégias e em todos os formatos; inferência do wizard; escritor e leitor
+`.xlsx`; repositórios; e widget tests de TL-06, TL-18 e TL-21. Ainda faltam o teste de migração
+(só existe a versão 1 do esquema), o de desempenho (T-309) e o de integração.
+
 ## 14.2 Testes obrigatórios
 
 Cada item abaixo é condição de conclusão da sua fase em [13](13-plano-de-implementacao.md). "Origem"
@@ -150,7 +162,13 @@ Um mês fictício completo, escolhido por conter todos os casos interessantes em
 Os totais esperados desse mês são calculados manualmente e fixados como constante no arquivo. Se um
 refatoramento mudar o total, o teste falha — que é exatamente o objetivo.
 
-### `modelo_exemplo.xlsx` — planilha de teste
+### `modelo_exemplo.dart` — planilha de teste
+
+> Na implementação, a planilha de teste é montada em código, parte por parte, a partir do XML
+> (`test/fixtures/modelo_exemplo.dart`), em vez de um `.xlsx` binário. Cada detalhe fica à vista
+> e versionável em texto, e um teste pode trocar uma parte (tirar o `calcPr`, esvaziar uma aba)
+> sem precisar de outro arquivo. A planilha real da empresa **não** foi versionada: o spike S-01 a
+> usa direto do disco, com `tool/spike_xlsx.dart`.
 
 Um `.xlsx` construído à mão, com a estrutura da seção 10.1 de
 [10](10-especificacao-planilha.md), contendo **de propósito** tudo que pode dar errado:

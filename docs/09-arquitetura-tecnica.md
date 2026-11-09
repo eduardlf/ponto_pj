@@ -66,81 +66,75 @@ substitui o provider do repositório por uma implementação falsa sem tocar em 
 
 ## 9.2 Estrutura de pastas
 
+A árvore abaixo é a da implementação. Ela difere do primeiro rascunho em três pontos, todos por
+causa das regras de dependência: `ReferenciaCelula`, `PlanoDeEscrita` e `ConteudoPlanilha` estão no
+domínio (o `PreenchedorPlanilha` usa os três); os contratos de serviço de infraestrutura
+(`EscritorXlsx`, `ServicoEmail`...) estão em `domain/contratos/`, porque `presentation/` os enxerga
+pelos providers e não pode importar `data/`; e a formatação de competência recebe `(ano, mes)`,
+porque `core/` não pode importar `Competencia`.
+
 ```
 lib/
-├── main.dart                        # bootstrap: banco, providers, runApp
+├── main.dart                         # abre o banco, carrega preferências, runApp
 ├── app/
-│   ├── app.dart                     # MaterialApp.router, tema, localização
-│   ├── rotas.dart                   # GoRouter e todas as rotas nomeadas
-│   ├── tema.dart                    # ThemeData claro e escuro (04, seção 4.5)
-│   └── providers.dart               # providers raiz: banco, repositórios, serviços
+│   ├── app.dart                      # MaterialApp.router, tema, localização pt-BR
+│   ├── rotas.dart                    # GoRouter: três abas e as telas por cima
+│   ├── tema.dart                     # claro e escuro (04, seção 4.5) e CoresPonto
+│   └── providers.dart                # providers raiz: banco, repositórios, serviços
 ├── core/
-│   ├── resultado.dart               # Resultado<T> — sucesso ou falha
-│   ├── falhas.dart                  # hierarquia de Falha
-│   ├── formatadores.dart            # duração, data, hora, competência em pt-BR
-│   ├── constantes.dart
-│   └── extensoes/
-│       ├── data_extensoes.dart      # apenasData, mesmoDia, primeiroDiaDoMes...
-│       └── duracao_extensoes.dart   # formatoHhMm, sinalizada...
+│   ├── resultado.dart                # Resultado<T> — sucesso ou falha
+│   ├── falhas.dart                   # hierarquia de Falha
+│   ├── formatadores.dart             # duração, data, hora, competência em pt-BR
+│   ├── relogio.dart                  # Relogio injetável: o único DateTime.now()
+│   ├── datas_excel.dart              # número de série e fração de dia do Excel
+│   └── extensoes/data_extensoes.dart # datas civis em UTC, iso, horaDoDia...
 ├── domain/
-│   ├── enums/                       # StatusDia, TipoMarcacao, CampoColuna...
-│   ├── entidades/
-│   │   ├── dia_trabalho.dart        ├── marcacao.dart
-│   │   ├── turno.dart               ├── intervalo.dart
-│   │   ├── configuracao_jornada.dart├── jornada_dia_semana.dart
-│   │   ├── perfil_usuario.dart      ├── feriado.dart
-│   │   ├── modelo_planilha.dart     ├── competencia.dart
-│   │   ├── envio_mensal.dart        ├── configuracao_email.dart
-│   │   ├── resumo_periodo.dart      └── pendencia.dart
+│   ├── enums/                        # enums.dart (doc 06) e rotulos.dart (pt-BR)
+│   ├── entidades/                    # dia, marcação, jornada, competência, modelo,
+│   │                                 # envio, e-mail, resumo, plano de escrita,
+│   │                                 # referência de célula, conteúdo lido da planilha
 │   ├── servicos/
-│   │   ├── calculadora_ponto.dart   # A5 e doc 12 — coração do cálculo
-│   │   ├── preenchedor_planilha.dart# doc 10 — produz o PlanoDeEscrita
-│   │   ├── validador_modelo.dart    # validações do wizard
-│   │   ├── gerador_pendencias.dart  # pendências do fechamento
-│   │   └── resolvedor_variaveis.dart# {nome}, {competencia}, {mes}...
-│   └── repositorios/                # SOMENTE contratos abstratos
-│       ├── dia_repositorio.dart     ├── jornada_repositorio.dart
-│       ├── perfil_repositorio.dart  ├── feriado_repositorio.dart
-│       ├── modelo_planilha_repositorio.dart
-│       ├── configuracao_email_repositorio.dart
-│       └── envio_repositorio.dart
+│   │   ├── calculadora_ponto.dart    # A5 e doc 12 — o único lugar com cálculo de horas
+│   │   ├── gerador_pendencias.dart   # pendências do fechamento
+│   │   ├── validador_marcacao.dart   # RN-03, RN-04
+│   │   ├── consulta_periodo.dart     # dias + totais + banco de um período
+│   │   ├── preenchedor_planilha.dart # doc 10 — produz o PlanoDeEscrita
+│   │   ├── inferencia_planilha.dart  # sugestões do wizard
+│   │   ├── validador_modelo.dart     # validações do wizard
+│   │   └── resolvedor_variaveis.dart # {nome}, {competencia}, {mes}...
+│   ├── repositorios/repositorios.dart# SOMENTE contratos de repositório
+│   └── contratos/contratos.dart      # contratos de leitor, escritor, arquivos, e-mail
 ├── data/
-│   ├── local/
-│   │   ├── banco_local.dart         # @DriftDatabase, migrações, seeds
-│   │   ├── tabelas.dart             # definições de tabela (doc 06)
-│   │   ├── conversores.dart         # ConversorData, ConversorHora
-│   │   └── daos/                    # um DAO por agregado
-│   ├── repositorios/                # implementações dos contratos
-│   ├── mapeadores/                  # linha do Drift <-> entidade de domínio
+│   ├── local/                        # Drift: banco_local.dart (seeds), tabelas, conversores
+│   ├── repositorios/                 # implementações Drift dos contratos
 │   ├── planilha/
-│   │   ├── leitor_planilha.dart     # lê estrutura e conteúdo do .xlsx
-│   │   ├── escritor_xlsx.dart       # contrato do escritor
-│   │   ├── escritor_xlsx_zip.dart   # implementação por edição de XML (S-01)
-│   │   └── referencia_celula.dart   # A1 <-> (linha, coluna)
-│   └── servicos/
-│       ├── armazenamento_arquivos.dart
-│       ├── servico_email.dart
-│       ├── servico_notificacoes.dart
-│       └── servico_backup.dart
+│   │   ├── pacote_xlsx.dart          # navegação no pacote OOXML (rels, abas)
+│   │   ├── leitor_planilha_xml.dart  # lê abas e células (ADR-11)
+│   │   └── escritor_xlsx_zip.dart    # escrita cirúrgica do XML (ADR-05)
+│   └── servicos/                     # arquivos, e-mail, compartilhar/abrir, seletor
 └── presentation/
-    ├── comum/                       # widgets do design system (04, seção 4.5)
-    │   ├── seletor_periodo.dart     ├── cartao_resumo.dart
-    │   ├── chip_status_dia.dart     ├── campo_duracao.dart
-    │   ├── grade_planilha.dart      └── estado_vazio.dart
-    ├── onboarding/                  ├── dia/
-    ├── semana/                      ├── mes/
-    ├── configuracoes/               ├── planilha_wizard/
-    ├── fechamento/                  ├── historico/
-    └── notificacoes/
+    ├── comum/                        # componentes.dart (SeletorPeriodo, CartaoResumo,
+    │                                 # ChipStatusDia, EstadoVazio...), grade_planilha.dart,
+    │                                 # interacao.dart (diálogos, mensagens, seletores)
+    ├── dia/                          # TL-06, TL-09, TL-10
+    ├── menu/  periodo/               # TL-11, TL-07, TL-08
+    ├── configuracoes/                # TL-12, TL-02, TL-13, TL-14, TL-22
+    ├── onboarding/                   # TL-01 a TL-05
+    ├── planilha_wizard/              # TL-16 a TL-20
+    ├── fechamento/  historico/       # TL-21, TL-23
 
 test/
-├── domain/                          # testes puros: cálculo, preenchimento, validação
-├── data/                            # testes de repositório com banco em memória
-└── presentation/                    # widget tests das telas críticas
+├── core/  domain/                    # testes puros: cálculo, preenchimento, validação
+├── data/                             # escritor e leitor .xlsx, repositórios em memória
+├── presentation/                     # widget tests das telas críticas
+├── fixtures/                         # mes_exemplo.dart e modelo_exemplo.dart
+└── helpers/
+tool/spike_xlsx.dart                  # spike S-01 sobre uma planilha real
 ```
 
-Cada pasta de `presentation/` contém `<nome>_tela.dart`, `<nome>_controller.dart`,
-`<nome>_estado.dart` e uma subpasta `widgets/` quando necessário.
+Cada tela tem seu controller (Riverpod `AsyncNotifier`) no mesmo diretório. O estado assíncrono
+usa o próprio `AsyncValue` — carregando, erro e pronto —, renderizado pelo `ConteudoAssincrono`
+comum, que mantém o conteúdo anterior na tela durante a recarga.
 
 ## 9.3 Dependências
 
@@ -160,9 +154,9 @@ Cada pasta de `presentation/` contém `<nome>_tela.dart`, `<nome>_controller.dar
 | `intl` | 0.19.0 | Formatação e localização pt-BR | F-0 |
 | `collection` | ^1.18 | Utilitários de lista | F-0 |
 | `file_picker` | ^8.1 | Seleção do `.xlsx` | F-4 |
-| `excel` | ^4.0 | **Leitura** da estrutura da planilha | F-4 |
-| `archive` | ^3.6 | Manipulação do zip do `.xlsx` na escrita | F-5 |
-| `xml` | ^6.5 | Edição do XML interno das planilhas | F-5 |
+| ~~`excel`~~ | — | Substituído por leitura própria do XML ([ADR-11](15-riscos-e-decisoes.md)) | — |
+| `archive` | ^3.6 | Zip do `.xlsx`, na leitura e na escrita | F-4 |
+| `xml` | ^6.5 | XML interno das planilhas, na leitura e na escrita | F-4 |
 | `crypto` | ^3.0 | SHA-256 do arquivo modelo | F-4 |
 | `share_plus` | ^10.0 | Compartilhamento e fallback de envio | F-5 |
 | `flutter_email_sender` | ^6.0 | Abertura do cliente de e-mail com anexo | F-6 |
@@ -170,7 +164,16 @@ Cada pasta de `presentation/` contém `<nome>_tela.dart`, `<nome>_controller.dar
 | `timezone` | ^0.9 | Agendamento correto no fuso local | F-7 |
 | `permission_handler` | ^11.3 | Permissão de notificação no Android 13+ | F-7 |
 
-**Desenvolvimento:** `drift_dev`, `build_runner`, `flutter_lints ^4.0`, `mocktail ^1.0`.
+**Desenvolvimento:** `drift_dev`, `build_runner`, `flutter_lints ^4.0` e `sqlite3` — este só para
+apontar o SQLite do sistema nos testes de repositório no Windows. O `mocktail` não foi necessário:
+os testes usam o banco real em memória e implementações falsas escritas à mão.
+
+**Versões resolvidas na F-0** (fixadas no `pubspec.yaml`): drift e drift_dev 2.23.1,
+drift_flutter 0.2.4, flutter_riverpod 2.6.1, go_router 14.8.1, file_picker 8.3.7, archive 3.6.1,
+xml 6.5.0, crypto 3.0.8, share_plus 10.1.4, flutter_email_sender 6.0.3, path_provider 2.1.5,
+intl 0.19.0. Atenção: o `drift_flutter` declara `drift: ^2.21`, mas a partir da 0.2.5 usa APIs
+de drift mais novas que a 2.23 e quebra a compilação do APK — por isso ele está preso em `<0.2.5`.
+Os pacotes de notificação ainda não foram adicionados: são da F-7.
 
 **Decisão sobre leitura e escrita do `.xlsx`.** O pacote `excel` é usado **apenas para ler** a
 estrutura e o conteúdo do arquivo no wizard. A escrita **não** usa `excel`, porque ele reserializa
@@ -206,6 +209,11 @@ abstract interface class DiaRepositorio {
   Future<void> definirStatus(DateTime data, StatusDia status, String? observacao);
 }
 ```
+
+Na implementação, as operações de escrita devolvem `Future<Resultado<DiaTrabalho>>` — o dia já
+recalculado ou a `Falha` de RN-03/RN-04 —, e o contrato ganhou `primeiraDataRegistrada`,
+`existeRegistroEntre` e `recalcularAPartirDe` (RN-15, R-03 e RN-29). Os contratos completos
+estão em `lib/domain/repositorios/repositorios.dart` e `lib/domain/contratos/contratos.dart`.
 
 `buscarPorData` **nunca** retorna nulo: uma data sem registro devolve um `DiaTrabalho` vazio já com
 a carga prevista da jornada aplicada. Isso elimina verificações de nulo em toda a camada de
@@ -398,6 +406,13 @@ final rotas = GoRouter(
 `StatefulShellRoute.indexedStack` é o que preserva a pilha de cada aba ao alternar entre elas,
 conforme exigido pelas regras de navegação de [04, seção 4.2](04-ux-navegacao-telas.md).
 
+Na implementação, Semana, Mês e Histórico ficam na pilha da aba Menu (`/menu/semana`,
+`/menu/mes`, `/menu/historico`), e a data ou a competência vão na própria URL
+(`/dia?data=2026-05-07`, `/fechamento?ano=2026&mes=10`), o que ajuda a restaurar a tela depois que
+o sistema encerra o app (RNF-13). Os formulários de configuração — `/perfil`, `/jornada`,
+`/jornada/:dia`, `/email` — são rotas de primeiro nível, como o wizard e o fechamento, porque
+também são abertos de fora da aba Configurações (pelo fechamento e pelos cartões de pendência).
+
 ## 9.8 Localização, formatação e tempo
 
 - `MaterialApp` com `locale: Locale('pt', 'BR')` fixo e `flutter_localizations`. O app não oferece
@@ -428,7 +443,10 @@ relógio e o agendador — e é sempre injetável, para que os testes de
 |----------|-------|--------|
 | Banco SQLite | `getApplicationDocumentsDirectory()/ponto_pj.db` | Privado ao app, incluído no backup |
 | Arquivo modelo `.xlsx` | `.../modelos/<id>_<nome original>` | Privado; cópia, nunca o arquivo do usuário (RN-22) |
-| Planilhas geradas | `.../geradas/<nome resolvido>` | Privado; compartilhado por `FileProvider` quando anexado |
+| Planilhas geradas | `.../geradas/<instante>/<nome resolvido>` | Privado; uma pasta por geração, para que regerar não apague o arquivo de um envio anterior (RN-24). Compartilhado por `FileProvider` quando aberto ou anexado |
+
+Modelos e planilhas geradas ficam em `getApplicationSupportDirectory()`, que no Android é
+`context.getFilesDir()` — a pasta que o `<files-path>` do `file_paths.xml` enxerga.
 | Backups | Escolhido pelo usuário via seletor do sistema | Precisa sobreviver à desinstalação |
 
 O anexo de e-mail exige um `FileProvider` declarado no `AndroidManifest.xml` com

@@ -455,3 +455,44 @@ Para quem — ou o que — for executar uma tarefa, esta é a documentação mí
 | Trabalhar em notificações | 07 (A6), depois 11 (seção 11.6) |
 | Criar repositório ou serviço | 09 (seções 9.4 e 9.5), depois 06 |
 | Escrever teste | 14, depois o documento da regra em questão |
+
+## 13.5 Estado da implementação
+
+Primeira entrega: o **núcleo funcional** — registrar o ponto, ver o período, ensinar o app a
+preencher a planilha da empresa, gerar o arquivo e abrir o e-mail. Por decisão de escopo, ficaram
+de fora os feriados (F-3) e toda a F-7. `flutter analyze` está limpo, `flutter test` roda 212
+testes, e o APK foi instalado e usado num emulador Android 14 (onboarding, bater ponto, abas e
+fechamento).
+
+| Fase | Situação | O que falta |
+|------|----------|-------------|
+| S-01 | Executado com a planilha real ([10, 10.5](10-especificacao-planilha.md)) | Abrir o arquivo gerado no Excel |
+| F-0 | Completa (T-001 a T-012) | — |
+| F-1 | Completa (T-101 a T-108) | — |
+| F-2 | Completa (T-201 a T-212) | Teste em aparelho real |
+| F-3 | Parcial: T-301 a T-305 | T-306 e T-307 (feriados), T-308 (fechar e reabrir o dia: o campo existe e o repositório já recusa escrita em dia fechado, mas não há tela), T-309 (medição de desempenho) |
+| F-4 | Completa (T-401 a T-414) | Na troca de arquivo (RF-32), a compatibilidade é conferida só pelo nome da aba |
+| F-5 | Completa (T-501 a T-510) | O recálculo das fórmulas (T-503) foi verificado na estrutura do XML; o recálculo em si é do Excel |
+| F-6 | Completa (T-601 a T-609) | Teste com cliente de e-mail real |
+| F-7 | Só o tema (RF-02) | Notificações (T-701 a T-706), backup (T-707 a T-709), checklist de acessibilidade em aparelho (T-710), ícone e abertura (T-712) |
+
+**O que vai além do plano original**, sempre registrado no documento de cada assunto:
+
+- **Período da competência configurável** (RN-25, [ADR-12](15-riscos-e-decisoes.md)): a planilha
+  real vai de 26 a 25.
+- **Sugestões do wizard** para células fixas, formatos nativos e textos de status
+  ([10, seção 10.3](10-especificacao-planilha.md)): na planilha real, o mapeamento inteiro sai
+  pronto e só o dia de início precisa ser ajustado.
+- **Cartão de competência pendente** na aba Dia (mitigação de R-03): avisa que o mês anterior não
+  foi enviado mesmo sem notificações.
+- **Botão "Abrir"** a planilha gerada, por um canal nativo e o `FileProvider` da spec.
+
+**Correções da especificação feitas na implementação**: RN-08 e a tabela de virada de dia
+([12, 12.5](12-regras-de-calculo.md), [ADR-13](15-riscos-e-decisoes.md)); dias futuros nos totais
+e dias antes do início do acompanhamento nos totais
+([12, 12.3](12-regras-de-calculo.md)); leitura do `.xlsx` sem o pacote `excel`
+([ADR-11](15-riscos-e-decisoes.md)); contratos de serviço no domínio
+([09, 9.2](09-arquitetura-tecnica.md)).
+
+**Próximo passo sugerido:** F-7, começando pelo lembrete de fechamento (T-704) — é ele que ataca
+a dor D1 diretamente — e pelo spike S-03 no aparelho do autor.

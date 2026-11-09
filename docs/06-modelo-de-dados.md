@@ -12,7 +12,7 @@ coluna sem antes registrá-la neste arquivo.
 | **Hora do dia** | `INTEGER`, minutos desde a meia-noite (0 a 1439) | Aritmética trivial, sem fuso, sem ambiguidade. `08:30` é `510`. |
 | **Duração** | `INTEGER`, minutos, podendo ser negativa | Saldos negativos são a metade do domínio do problema. |
 | **Instante** (auditoria) | `INTEGER`, segundos desde a época, UTC | Padrão do Drift para `DateTime`. Usado só em `criado_em` e `atualizado_em`. |
-| **Enumeração** | `TEXT` com o nome da constante | Legível ao inspecionar o banco e ao ler um backup; migração de valores fica óbvia. |
+| **Enumeração** | `TEXT` com o nome da constante | Legível ao inspecionar o banco e ao ler um backup; migração de valores fica óbvia. Em Dart os valores seguem a convenção da linguagem (`porData`, `entrada1`); o `ConversorEnum` grava `POR_DATA`, `ENTRADA_1`. |
 | **Booleano** | `INTEGER` 0 ou 1 | Padrão do SQLite. |
 | **Referência de célula** | `TEXT` no formato A1, ex.: `C3` | Formato que o usuário reconhece e que aparece na interface. |
 
@@ -113,6 +113,7 @@ erDiagram
         text formato_data
         text formato_hora
         bool escrever_como_texto
+        int dia_inicio_competencia
         bool ativo
         int criado_em
         int atualizado_em
@@ -328,7 +329,8 @@ regrava o dia após qualquer alteração em suas marcações ou em seu status.
 | `estrategia_linha` | text | O | `EstrategiaLinha` |
 | `formato_data` | text | O | `FormatoData`. D: `DD_MM_AAAA` |
 | `formato_hora` | text | O | `FormatoHora`. D: `HH_MM` |
-| `escrever_como_texto` | bool | O | Verdadeiro escreve tudo como string; falso usa tipos nativos do Excel. D: `1` |
+| `escrever_como_texto` | bool | O | Verdadeiro escreve tudo como string; falso usa tipos nativos do Excel. Derivado dos formatos: é falso quando a data é `DATA_EXCEL` ou a hora é `HORA_EXCEL`. D: `1` |
+| `dia_inicio_competencia` | int | O | Dia do mês anterior em que o período da competência começa, de 1 a 28 (RN-25). `1` é o mês civil; `26` faz a competência 10/2026 ir de 26/09 a 25/10. D: `1` |
 | `ativo` | bool | O | RN-17: no máximo um verdadeiro |
 
 ### `mapeamento_coluna`
@@ -417,12 +419,8 @@ classDiagram
         +Duration saldo
         +bool inconsistente
         +bool fechado
-        +bool emAndamento(DateTime agora)
-        +Duration minutosEmCurso(DateTime agora)
-        +Duration saldoAgora(DateTime agora)
-        +Duration? previsaoSaida()
-        +List~Turno~ turnos()
-        +List~Intervalo~ intervalos()
+        +bool persistido
+        +DiaTrabalho copiaCom()
     }
 
     class Marcacao {
@@ -476,18 +474,29 @@ classDiagram
         +EstrategiaLinha estrategia
         +FormatoData formatoData
         +FormatoHora formatoHora
+        +int diaInicioCompetencia
         +Map~CampoColuna_int~ colunas
-        +Map~CampoCelulaFixa_String~ celulasFixas
+        +Map~CampoColuna_String~ rotulosCabecalho
+        +List~CelulaFixa~ celulasFixas
         +Map~StatusDia_String~ textosStatus
-        +ResultadoValidacao validar()
+        +bool escreverComoTexto
+    }
+
+    class CelulaFixa {
+        +CampoCelulaFixa campo
+        +String referencia
+        +String? valorLivre
     }
 
     class Competencia {
         +int ano
         +int mes
+        +int diaInicio
         +DateTime primeiroDia()
         +DateTime ultimoDia()
         +int totalDias()
+        +bool contem(DateTime)
+        +int posicaoDe(DateTime)
         +String formatado()
     }
 
@@ -497,6 +506,7 @@ classDiagram
         +Duration saldo
         +Duration bancoHoras
         +int diasUteis
+        +int diasTrabalhados
         +List~Pendencia~ pendencias
     }
 
@@ -515,13 +525,20 @@ classDiagram
     }
 
     class CalculadoraPonto {
-        +DiaTrabalho calcularDia(DiaTrabalho, ConfiguracaoJornada)
-        +ResumoPeriodo calcularPeriodo(List~DiaTrabalho~, ConfiguracaoJornada)
-        +Duration? previsaoSaida(DiaTrabalho, ConfiguracaoJornada)
+        +DiaTrabalho calcularDia(DiaTrabalho, ConfiguracaoJornada, agora)
+        +DiaTrabalho reavaliarConsistencia(DiaTrabalho, ConfiguracaoJornada, agora)
+        +bool emAndamento(DiaTrabalho, agora)
+        +Duration minutosEmCurso(DiaTrabalho, agora)
+        +Duration saldoAgora(DiaTrabalho, ConfiguracaoJornada, agora)
+        +Duration? previsaoSaida(DiaTrabalho, ConfiguracaoJornada, agora)
+        +List~Turno~ turnos(DiaTrabalho, ConfiguracaoJornada)
+        +List~Intervalo~ intervalos(DiaTrabalho, ConfiguracaoJornada)
+        +Duration bancoAcumulado(List~DiaTrabalho~, ConfiguracaoJornada, ate, agora)
+        +ResumoPeriodo calcularPeriodo(List~DiaTrabalho~, ConfiguracaoJornada, agora)
     }
 
     class PreenchedorPlanilha {
-        +ResultadoPreenchimento preencher(ModeloPlanilha, Competencia, List~DiaTrabalho~, PerfilUsuario)
+        +Resultado~ResultadoPreenchimento~ preencher(ModeloPlanilha, Competencia, List~DiaTrabalho~, PerfilUsuario, ResumoPeriodo, AbaPlanilha)
     }
 
     DiaTrabalho "1" o-- "0..*" Marcacao
@@ -529,6 +546,7 @@ classDiagram
     DiaTrabalho ..> Intervalo : deriva
     ConfiguracaoJornada "1" o-- "7" JornadaDiaSemana
     JornadaDiaSemana "1" o-- "0..*" TurnoPrevisto
+    ModeloPlanilha "1" *-- "0..*" CelulaFixa
     ResumoPeriodo "1" o-- "0..*" Pendencia
     EnvioMensal --> Competencia
     CalculadoraPonto ..> DiaTrabalho : calcula
@@ -540,6 +558,12 @@ classDiagram
 
 `Turno` e `Intervalo` **não são persistidos**: são derivados das marcações em tempo de leitura. Só
 existe uma fonte de verdade para a sequência do dia, e é a lista de marcações.
+
+**Por que `DiaTrabalho` não tem métodos de cálculo.** A primeira versão deste diagrama punha
+`emAndamento`, `saldoAgora`, `turnos` e afins em `DiaTrabalho`. Na implementação eles foram para a
+`CalculadoraPonto`, porque são cálculo de horas e a regra 2 do projeto é que todo cálculo vive em um
+único serviço. `DiaTrabalho` virou um registro de dados imutável — o que também o torna trivial de
+comparar nos testes.
 
 ## 6.6 Definição em Drift
 
@@ -620,6 +644,10 @@ class Marcacoes extends Table {
 }
 ```
 
+A implementação completa está em `lib/data/local/tabelas.dart`. Duas diferenças em relação ao
+trecho acima, ambas de forma e não de esquema: as enumerações usam o `ConversorEnum` genérico (que
+grava `NORMAL`, `POR_DATA`) em vez de `textEnum`, e as horas usam `ConversorMinutos`.
+
 **Índices obrigatórios**
 
 | Tabela | Índice | Motivo |
@@ -649,6 +677,9 @@ Dados semeados na criação do banco:
    01/05, 07/09, 12/10, 02/11, 15/11, 25/12. Os feriados móveis (Carnaval, Sexta-feira Santa,
    Corpus Christi) **não** são semeados por dependerem do cálculo da Páscoa; ficam a cargo do
    usuário nesta versão e estão registrados como evolução em [15](15-riscos-e-decisoes.md).
+   > Na primeira entrega (núcleo funcional) os feriados ficaram fora por decisão de escopo: a
+   > tabela `feriado` existe no esquema versão 1, para não exigir migração depois, mas não é
+   > semeada nem usada. Enquanto isso, o feriado é marcado pelo status do dia (TL-10).
 5. **`preferencia_app`** — `tema = sistema`, `onboarding_concluido = false`.
 
 `perfil_usuario` **não** é semeado: sua ausência é justamente o que dispara o onboarding (UC-01).

@@ -178,6 +178,69 @@ razão de o produto existir.
 qualquer pessoa que inspecione o APK — inclusive o professor. Nenhuma dependência futura que exija
 rede pode entrar sem revisitar esta decisão, o que é exatamente o comportamento desejado.
 
+**Verificação.** `aapt dump permissions` no APK de release da primeira entrega lista apenas
+`br.com.pontopj.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, que o androidx adiciona sozinho. Nenhum
+plugin trouxe `INTERNET`. O manifesto de depuração continua com ela, porque o `flutter run` precisa
+da rede para o hot reload — e ele não vai para o APK de release.
+
+---
+
+### ADR-11 — Leitura do `.xlsx` com `archive` e `xml`, sem o pacote `excel`
+
+**Contexto.** A especificação previa o pacote `excel` só para **ler** a planilha no wizard. A
+escrita já trata o `.xlsx` como um zip de XML (ADR-05).
+
+**Decisão.** `LeitorPlanilhaXml` lê abas, células, textos compartilhados, fórmulas, mesclagens e
+formatos de número direto do XML, com os mesmos `archive` e `xml` da escrita, e os dois
+compartilham `PacoteXlsx`, que resolve os relacionamentos do pacote.
+
+**Alternativa descartada.** *Pacote `excel`*: uma dependência a mais, e pesada; reconstrói a pasta
+inteira em memória; e não expõe, de forma simples, o que o wizard precisa saber — se uma célula
+**vazia** já está formatada como data ou hora (é o que permite sugerir valores nativos) e quais
+células são mescladas (é o que permite achar o campo ao lado de "Nome:").
+
+**Consequências.** Leitor e escritor enxergam o arquivo do mesmo jeito, e um teste garante que o
+arquivo gerado é relido corretamente. Em troca, cerca de 300 linhas de código próprio, cobertas
+pelos testes de `test/data/`.
+
+---
+
+### ADR-12 — Período da competência configurável no modelo
+
+**Contexto.** RN-25 previa só o mês civil. A planilha real que originou o projeto, preenchida
+antes por um script em Python, cobre de 26 do mês anterior a 25 do mês da competência — e com o
+mês civil o app escreveria as datas erradas.
+
+**Decisão.** `modelo_planilha.dia_inicio_competencia` (1 a 28, padrão 1). A `Competencia` recebe
+esse dia: com 26, a competência 10/2026 vai de 26/09 a 25/10. A pergunta fica no passo 2 do wizard.
+
+**Alternativas descartadas.** *Guardar o dia em `preferencia_app` ou na jornada*: o período é uma
+propriedade da planilha da empresa, não do horário de trabalho. *Período totalmente livre (data
+inicial e final)*: complexidade sem caso real que a justifique; o limite de 28 garante que o dia
+exista em todos os meses.
+
+**Consequências.** O fechamento, a sugestão de competência e o cartão de competência pendente usam
+o período do modelo ativo; a visão de Mês continua sendo o mês do calendário.
+
+---
+
+### ADR-13 — Virada de dia pela rotação no maior intervalo
+
+**Contexto.** RN-01 ordena as marcações por horário, e a tabela 12.5 esperava turnos cruzando a
+meia-noite. As duas coisas eram incompatíveis: depois de ordenar, a saída nunca fica antes da
+entrada. Detalhes na nota de revisão de [12, seção 12.5](12-regras-de-calculo.md).
+
+**Decisão.** Com a virada ligada, a sequência começa logo depois do maior intervalo entre
+horários consecutivos; desligada, vale a ordem crescente pura.
+
+**Alternativa descartada.** *Guardar a hora além de 24 h ou a data real de cada batida*: mudaria o
+modelo de dados (06, seção 6.1) para atender um caso raro, e o botão de bater ponto continuaria
+gravando a saída das 06:00 no dia seguinte.
+
+**Consequências.** Com a virada ligada, um turno diurno único de mais de 12 h é lido como noturno.
+Por isso ela continua desligada por padrão — e, ligada, um horário digitado errado não vira mais um
+turno de 23 h.
+
 ---
 
 ## 15.2 Riscos
@@ -290,8 +353,8 @@ valor demonstrável mesmo parando na F-5.
 
 | ID | Pergunta | Quando | Prazo | Detalhamento |
 |----|----------|--------|-------|--------------|
-| **S-01** | É possível escrever em um `.xlsx` real preservando formatação, fórmulas e demais abas? | **Antes da F-0** | 3 dias | [13](13-plano-de-implementacao.md) |
-| **S-02** | O modelo de mapeamento de [10](10-especificacao-planilha.md) cobre a planilha real da empresa? | Junto de S-01 | 1 dia | Preencher o modelo à mão em papel, campo por campo, com a planilha aberta |
+| **S-01** | É possível escrever em um `.xlsx` real preservando formatação, fórmulas e demais abas? | **Antes da F-0** | 3 dias | [13](13-plano-de-implementacao.md). **Executado:** sim, com a ressalva de abrir no Excel — resultado em [10, seção 10.5](10-especificacao-planilha.md) |
+| **S-02** | O modelo de mapeamento de [10](10-especificacao-planilha.md) cobre a planilha real da empresa? | Junto de S-01 | 1 dia | Preencher o modelo à mão em papel, campo por campo, com a planilha aberta. **Executado:** cobre, desde que o período comece no dia 26 (ADR-12); o wizard sugere sozinho todo o resto do mapeamento |
 | **S-03** | `flutter_local_notifications` dispara de forma confiável com o app fechado no aparelho do autor? | Antes da F-7 | 1 dia | Agendar para 24h à frente, fechar o app, verificar. Se falhar, R-03 se materializou |
 
 Um spike não produz código de produção. Ele produz uma resposta e, se necessário, uma ADR nova.

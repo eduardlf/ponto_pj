@@ -65,6 +65,10 @@ função calcularDia(dia, jornada, agora) -> DiaTrabalho
 
   // ── 2. Ordenação e tipagem (RN-01) ─────────────────────────────────────────
   marcacoes ← dia.marcacoes ordenadas por hora crescente
+  se jornada.permiteViradaDia:                                // RN-08, ver 12.5
+      marcacoes ← rotação que começa logo depois do maior intervalo entre
+                  horários consecutivos (o intervalo que cruza a meia-noite
+                  vence os empates, preservando a ordem crescente)
   para i de 0 até marcacoes.length - 1:
       marcacoes[i].ordem ← i + 1
       marcacoes[i].tipo  ← (i % 2 == 0) ? ENTRADA : SAIDA
@@ -117,7 +121,7 @@ função previsaoSaida(dia, jornada, agora) -> Duration?      // RN-16
 ```
 função calcularPeriodo(dias, jornada, agora) -> ResumoPeriodo
 
-  trabalhado    ← soma de dia.minutosTrabalhados
+  trabalhado    ← soma de dia.minutosTrabalhados, usando o valor vivo para o dia corrente
   cargaPrevista ← soma de dia.cargaPrevista
   saldo         ← soma de dia.saldo, usando saldoAgora para o dia corrente
   diasUteis     ← contagem de dias com cargaPrevista > 0
@@ -126,6 +130,19 @@ função calcularPeriodo(dias, jornada, agora) -> ResumoPeriodo
 
   retorna ResumoPeriodo(...)
 ```
+
+**Dias futuros.** Um dia depois de `agora` ainda não aconteceu: entra em `cargaPrevista` e em
+`diasUteis` (são propriedades do período), mas não soma trabalho, saldo nem banco, e não gera
+pendência. Sem essa regra, a visão da semana mostraria na segunda-feira um saldo de −32 h. Pelo
+mesmo motivo, o dia de hoje só vira "dia útil sem registro" depois que termina. O trabalhado do
+dia corrente também usa o valor vivo, para ficar coerente com o saldo ao lado dele.
+
+**Dias antes do início do acompanhamento.** O início do banco de RN-15 —
+`data_inicio_banco` ou, sem ela, o primeiro dia registrado; sem registro nenhum, hoje — também
+delimita os totais e as pendências dos períodos. Um dia anterior a ele nunca passou pelo app: é
+tratado como os dias futuros. A regra apareceu no primeiro teste em aparelho: instalado em 09/11,
+o app abria o fechamento de outubro com 22 dias úteis sem registro e saldo de −176 h. Quem quiser
+contar dias anteriores define o início do banco na tela da jornada.
 
 ```
 função bancoAcumuladoAte(data, jornada) -> Duration          // RN-15
@@ -178,15 +195,26 @@ inteira de bugs de "saída antes da entrada".
 | # | Marcações | `permiteViradaDia` | Trabalhado | Inconsistente | Observação |
 |---|-----------|:---:|-----------:|:---:|---|
 | V01 | 22:00 06:00 | sim | 480 | não | `06:00 + 24h − 22:00 = 8h` |
-| V02 | 22:00 06:00 | **não** | 0 | **sim** | par inválido, ignorado |
+| V02 | 22:00 06:00 | **não** | 960 | não | sem virada, lidos em ordem: 06:00 → 22:00 |
 | V03 | 22:00 02:00 03:00 06:00 | sim | 420 | não | 4h + 3h |
 | V04 | 08:00 12:00 22:00 02:00 | sim | 480 | não | turno normal + turno virado |
 | V05 | 08:00 08:00 | qualquer | — | — | recusado na entrada por RN-04 |
 
-A virada de dia é **desligada por padrão**. Com ela ligada, uma saída digitada errada — `07:00` em
-vez de `17:00` — vira um turno de 23 horas em silêncio. Desligada, o mesmo erro produz um dia
-inconsistente visível, que o usuário corrige. O padrão privilegia detectar o erro em vez de
-"funcionar" com um valor absurdo.
+> **Nota de revisão (implementação da F-2).** A primeira versão desta tabela esperava V02 com 0
+> minutos e dia inconsistente, como se os horários fossem pareados na ordem em que foram digitados.
+> Isso contradiz RN-01 — "as marcações são sempre ordenadas por horário crescente" — e o caso de
+> teste das marcações fora de ordem de 12.4: depois de ordenar, a saída nunca fica antes da entrada,
+> e o ramo de virada do algoritmo nunca era alcançado. Como o modelo guarda só a hora do dia, a
+> única forma de um turno cruzar a meia-noite sem violar RN-01 é escolher onde a sequência começa.
+> Com a virada ligada, ela começa logo depois do **maior intervalo** entre horários consecutivos,
+> que é o período de descanso: em `22:00 06:00`, o maior intervalo vai de 06:00 a 22:00, então o
+> dia começa às 22:00. V01, V03 e V04 continuam com os mesmos totais. Com a virada desligada, nada
+> muda em relação a RN-01.
+
+A virada de dia continua **desligada por padrão**, agora por outro motivo: com ela ligada, um dia
+diurno com um único turno de mais de 12 horas (07:00 às 20:00, por exemplo) é lido como turno
+noturno, porque o maior intervalo passa a ser o da jornada. Para quem trabalha de dia, a ordem
+crescente nunca erra; a opção existe para quem trabalha à noite.
 
 ---
 
@@ -305,7 +333,8 @@ widget monta essas strings por conta própria.
 | Situação | Comportamento definido |
 |----------|------------------------|
 | Marcação exatamente à meia-noite (`00:00`) | Válida, `Duration.zero`. É uma entrada às 0h, não uma ausência de valor |
-| Marcação às `23:59` seguida de saída às `00:01` | Só é válida com virada de dia ligada; resulta em 2 minutos |
+| Marcação às `23:59` seguida de saída às `00:01` | Com virada de dia ligada, resulta em 2 minutos; desligada, os horários são lidos em ordem e resultam em 23h58 (00:01 → 23:59) |
+| Saída às 12:00 seguida de nova entrada às 13:00, ainda sem a saída | O intervalo de 1 h já existe (RN-09): o almoço aconteceu, mesmo com o segundo turno aberto |
 | Dia com uma única marcação em data passada | Inconsistente, trabalhado 0, saldo `−carga` (C06) |
 | Dia com marcações e carga prevista 0 | Todo o trabalhado vira crédito (C10) |
 | Alteração da jornada com dias já calculados | Dias fechados não são recalculados (RN-29); os abertos são recalculados na próxima leitura |

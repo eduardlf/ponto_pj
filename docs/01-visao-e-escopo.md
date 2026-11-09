@@ -98,6 +98,9 @@ registro de ponto, sem obrigar a empresa a mudar a planilha que já usa.
   em planilha. Usa Android, tem familiaridade média com apps, baixa paciência para configuração.
 - **Secundário:** analista de RH / gestor que recebe as planilhas e precisa que cheguem no formato
   esperado, no prazo e sem erro.
+- **Recorte de acessibilidade:** pessoas com TDAH, para quem esquecer prazos e adiar tarefas
+  monótonas pesa mais. É o recorte da curricularização da extensão; as decisões de design ligadas a
+  ele estão em [03, seção 3.7](03-ux-personas-jornadas.md).
 
 Detalhamento em [03 — Personas e jornadas](03-ux-personas-jornadas.md).
 

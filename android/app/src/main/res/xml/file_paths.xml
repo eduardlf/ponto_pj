@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastas que o FileProvider pode expor a outros apps (docs/11, seção 11.3).
+     Só as planilhas geradas; o banco e os modelos continuam privados. -->
+<paths>
+    <files-path name="planilhas_geradas" path="geradas/" />
+</paths>

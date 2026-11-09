@@ -65,7 +65,9 @@ Um modelo de planilha é composto de cinco grupos de informação.
 Como o app decide em qual linha escrever cada dia. Esta é a decisão de projeto que resolve a maior
 parte da variação entre planilhas.
 
-**`SEQUENCIAL`** — o dia *n* do mês vai na linha `primeira_linha_dados + n - 1`.
+**`SEQUENCIAL`** — o dia *n* do período vai na linha `primeira_linha_dados + n - 1`. No mês civil,
+*n* é o dia do mês; com o período começando no dia 26 (RN-25), o dia 26 do mês anterior é o
+dia 1 do período e vai na primeira linha.
 
 > Serve para planilhas emitidas por competência, em que as linhas já correspondem aos dias na
 > ordem. É a mais comum e a mais rápida. Falha se a planilha tiver linhas intercaladas — como uma
@@ -81,7 +83,7 @@ parte da variação entre planilhas.
 ```mermaid
 flowchart TD
     INI(["Resolver a linha do dia D"]) --> EST{"estrategia_linha"}
-    EST -->|SEQUENCIAL| SEQ["linha = primeira_linha_dados<br/>+ diaDoMes(D) - 1"]
+    EST -->|SEQUENCIAL| SEQ["linha = primeira_linha_dados<br/>+ posicaoNoPeriodo(D) - 1"]
     SEQ --> LIM{"linha dentro da area de dados<br/>ou limite indefinido?"}
     LIM -->|Sim| OK(["linha resolvida"])
     LIM -->|Nao| ERR["Erro RN-21: aborta a geracao<br/>antes de escrever qualquer coisa"]
@@ -98,6 +100,13 @@ flowchart TD
 
 O índice do modo `POR_DATA` é construído **uma única vez** por geração e reaproveitado para os 31
 dias, o que mantém a operação dentro do orçamento de 3 segundos de [RNF-02](02-requisitos.md).
+
+**Período da competência.** Muitas empresas fecham o ponto antes do fim do mês. A planilha que
+originou este projeto ("DEMONSTRATIVO DAS HORAS CONTRATADAS", preenchida antes por um script em
+Python) tem 31 linhas de dados a partir da linha 7 e cobre de 26 do mês anterior a 25 do mês da
+competência. Por isso o modelo guarda `dia_inicio_competencia` (RN-25, [ADR-12](15-riscos-e-decisoes.md)):
+1 é o mês civil, o padrão. A pergunta fica no passo 2 do wizard, junto com as linhas, porque é uma
+propriedade da planilha da empresa.
 
 ### 3. Colunas dos campos por dia
 
@@ -131,8 +140,8 @@ Valores que aparecem uma única vez, endereçados por referência A1.
 |-------|---------------|
 | `NOME`, `MATRICULA`, `CARGO`, `EMPRESA` | Do `perfil_usuario` |
 | `MES` | Nome do mês por extenso: `"maio"` |
-| `ANO` | `"2026"` |
-| `COMPETENCIA` | `"maio/2026"` |
+| `ANO` | `"2026"`; número `2026` quando o modelo usa valores nativos |
+| `COMPETENCIA` | `"maio/2026"`; com `DATA_EXCEL`, a data nativa do dia 1 do mês, que a célula exibe no formato dela (ex.: `mm/yyyy` mostra `05/2026`) |
 | `TOTAL_MES` | Soma de `minutos_trabalhados` da competência |
 | `SALDO_MES` | Soma de `saldo_minutos` da competência |
 | `BANCO_HORAS` | Banco acumulado até o último dia da competência (RN-15) |
@@ -190,9 +199,9 @@ O arquivo escolhido pelo usuário **nunca** é modificado nem movido. O app trab
 | | |
 |---|---|
 | **Mostra** | Seletor de aba e a `GradePlanilha` com o conteúdo real, com números de linha |
-| **Coleta** | Aba, linha de cabeçalho (por toque na linha), primeira e última linha de dados, estratégia |
+| **Coleta** | Aba, linha de cabeçalho (por toque na linha), primeira e última linha de dados, estratégia, dia de início do período |
 | **Valida** | `primeira_linha_dados > linha_cabecalho`; a linha de cabeçalho tem ao menos um texto |
-| **Infere** | Sugere como cabeçalho a primeira linha com 3 ou mais células de texto não vazias, e como primeira linha de dados a seguinte |
+| **Infere** | Sugere como cabeçalho a primeira linha com 3 ou mais células de texto não vazias, como primeira linha de dados a seguinte e como última o fim do bloco contínuo de linhas com conteúdo, fórmula ou formato de data |
 | **Erros** | Nenhum bloqueante; sugestões erradas são corrigidas por toque |
 
 A inferência é uma sugestão, não uma decisão. Ela existe para que o caso comum seja resolvido em um
@@ -205,7 +214,7 @@ toque de confirmação, e o caso incomum continue possível.
 | **Mostra** | Lista de `CampoColuna`, cada um com um seletor que exibe `letra · texto do cabeçalho` |
 | **Coleta** | Índice de coluna por campo, ou "não usar" |
 | **Valida** | `DATA` obrigatória (RN-18); alerta não bloqueante em coluna repetida |
-| **Infere** | Associa campos a colunas por semelhança do texto do cabeçalho, sem acento e sem caixa: `data`, `entrada`/`entr`, `saida`/`saíd`, `total`, `obs` |
+| **Infere** | Associa campos a colunas por semelhança do texto do cabeçalho, sem acento e sem caixa: `data`, `entrada`/`entr`/`ent`, `saida`/`saíd`/`sai`, `total`, `saldo`, `obs`, `status`. A 1ª coluna de entrada vira `ENTRADA_1`, a 2ª `ENTRADA_2`, e assim por diante. Colunas com fórmula na área de dados nunca são sugeridas |
 | **Erros** | Sem coluna de data → `Continuar` desabilitado com explicação |
 
 ### Passo 4 — Células fixas, textos e formatos (TL-19)
@@ -215,6 +224,7 @@ toque de confirmação, e o caso incomum continue possível.
 | **Mostra** | Lista de `CampoCelulaFixa` com a referência atual; campos de texto por status; seletores de formato |
 | **Coleta** | Referências A1 (por toque na grade), textos de status, formatos de data e hora |
 | **Valida** | Referência dentro das dimensões da aba; alerta se a célula alvo contiver fórmula |
+| **Infere** | Células fixas pelos rótulos acima da tabela ("Nome:", "Matrícula:"/"Código", "Competência:"): a primeira célula vazia à direita do rótulo, pulando a mesclagem dele. Formatos nativos (`DATA_EXCEL`, `HORA_EXCEL`) quando as células de destino já estão formatadas como data e hora. Textos de status em branco quando iriam parar sobre uma coluna de hora nativa, porque texto ali quebra as somas da planilha |
 | **Erros** | Nenhum bloqueante |
 
 O alerta de fórmula é importante: escrever sobre `=SOMA(H6:H36)` destrói o cálculo da empresa.
@@ -309,7 +319,13 @@ função preencher(modelo, competencia, dias, perfil, resumo) -> ResultadoPreenc
 de `DATA` opcionais sem espalhar verificações pelo algoritmo.
 
 `limparColunasDeHorario` escreve célula vazia nas colunas de horário mapeadas, garantindo que um dia
-de folga não herde valores que porventura já estivessem no modelo.
+de folga não herde valores que porventura já estivessem no modelo. Pelo mesmo motivo, num dia
+normal as colunas de horário que sobram depois da última marcação também são limpas — como fazia o
+script em Python que antecedeu o app.
+
+`TOTAL_DIA`, `SALDO_DIA` e os totais das células fixas seguem o `formato_hora` do modelo: `08:30`,
+`08:30:00`, `8,5` ou, com `HORA_EXCEL`, a fração de dia nativa. O saldo leva sinal (`+00:30`,
+`-01:00`).
 
 **O valor de uma célula é tipado**, e é isso que permite ao escritor decidir como serializar:
 
@@ -411,6 +427,21 @@ para que as fórmulas **não sobrescritas** recalculem ao abrir:
 Sem isso, o total do mês continuaria exibindo o valor em cache de quando a planilha foi salva vazia,
 e o usuário abriria um arquivo com todos os dias preenchidos e total zero.
 
+Remover `calcChain.xml` exige tirar também a entrada dele de `[Content_Types].xml` e de
+`xl/_rels/workbook.xml.rels` — senão o Excel acusa conteúdo ilegível. Esses dois arquivos só são
+tocados quando a cadeia existe.
+
+**Fórmula compartilhada.** O Excel guarda fórmulas repetidas como uma célula mestre
+(`<f t="shared" ref="H6:H36" si="0">`) e dependentes que só apontam para ela (`<f t="shared"
+si="0"/>`). Sobrescrever a mestre deixaria as dependentes órfãs e corromperia o arquivo; por isso,
+nesse caso, as dependentes viram valores fixos com o último resultado. O wizard já avisa antes que
+a coluna tem fórmulas.
+
+**Outros detalhes da escrita.** Célula ou linha sem o atributo `r` recebe o endereço implícito por
+extenso antes de qualquer inserção. Uma célula nova numa linha com `spans` remove esse atributo,
+que é só uma dica de desempenho. Escrever fora da área declarada amplia `<dimension>`. Datas
+respeitam o sistema de 1904 quando a pasta de trabalho o usa.
+
 **Escape de XML.** Todo texto escrito passa por escape de `&`, `<`, `>`. Uma observação com "P&D"
 corromperia o arquivo sem isso.
 
@@ -422,12 +453,29 @@ abstract interface class EscritorXlsx {
 }
 ```
 
-O escritor é a única classe do sistema que conhece o formato `.xlsx`
-([09, seção 9.4](09-arquitetura-tecnica.md)). Trocá-lo não afeta nenhum teste do preenchedor.
+O escritor é a única classe do sistema que escreve o formato `.xlsx`
+([09, seção 9.4](09-arquitetura-tecnica.md)). Trocá-lo não afeta nenhum teste do preenchedor. A
+leitura (`LeitorPlanilhaXml`) usa os mesmos `archive` e `xml`, e não o pacote `excel` previsto
+inicialmente — ver [ADR-11](15-riscos-e-decisoes.md). Os dois compartilham `PacoteXlsx`, que
+resolve os relacionamentos do pacote OOXML.
 
 Os testes obrigatórios dele estão em [14](14-testes-e-qualidade.md) e incluem o mais importante de
 todos: **gerar a partir de um modelo com fórmulas e formatação e verificar, descompactando o
 resultado, que `styles.xml` e `sharedStrings.xml` são byte a byte idênticos ao original.**
+
+### Resultado do spike S-01
+
+Executado com `tool/spike_xlsx.dart` sobre a planilha real da empresa ("DEMONSTRATIVO DAS HORAS
+CONTRATADAS", gerada pelo LibreOffice 7.1), preenchendo a competência 10/2026 de 26/09 a 25/10:
+
+| Critério | Resultado |
+|----------|-----------|
+| `styles.xml` e `sharedStrings.xml` idênticos | Sim, byte a byte. Só `sheet1.xml` e `workbook.xml` mudaram |
+| Bordas, formatos e mesclagens | Preservados: `d/m/yyyy`, `[h]:mm:ss`, `mm/yyyy` e as 6 mesclagens |
+| Fórmulas não sobrescritas | Intactas: `WEEKDAY` em B, o dia por extenso em C, `TOTAL DIA` em J, `ACUMULADO` em K e `SUM(J7:J37)` em K39, com `fullCalcOnLoad="1"` |
+| Valores nativos | Datas em A e horários em D–I gravados como número, então as fórmulas de J e K calculam |
+| Arquivo modelo | Hash idêntico antes e depois |
+| Abre sem reparo | Abre no `openpyxl`, que é estrito com a ordem do XML. **Falta abrir no Excel de verdade**, como pede o item 6 de [14, seção 14.5](14-testes-e-qualidade.md): o LibreOffice desta máquina falhou ao rodar em modo headless, até com o arquivo original |
 
 ### Plano de contingência
 

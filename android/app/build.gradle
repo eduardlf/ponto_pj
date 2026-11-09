@@ -6,8 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ponto_pj"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "br.com.pontopj"
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,11 +20,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.ponto_pj"
+        applicationId = "br.com.pontopj"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -32,8 +31,8 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Assinado com a chave de depuração: o app é de uso pessoal, sem publicação em
+            // loja nesta fase (docs/README.md, "Distribuição").
             signingConfig = signingConfigs.debug
         }
     }
